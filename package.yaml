@@ -6,6 +6,8 @@ maintainer: seanhess@gmail.com
 copyright: Orbital Labs
 license: BSD3
 github: orbital/datarobot
+description: Client for DataRobot API
+synopsis: Client for DataRobot API
 
 dependencies:
 - base >=4.7 && <5
