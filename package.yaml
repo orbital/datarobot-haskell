@@ -1,11 +1,11 @@
 name: datarobot
-version: '0.1.0'
+version: '0.1.1'
 category: Web
 author: Sean Hess
 maintainer: seanhess@gmail.com
 copyright: Orbital Labs
 license: BSD3
-github: orbital/datarobot
+github: orbital/datarobot-haskell
 description: Client for DataRobot API
 synopsis: Client for DataRobot API
 
