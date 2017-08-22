@@ -1,0 +1,38 @@
+name: datarobot
+version: '0.1.0'
+category: Web
+author: Sean Hess
+maintainer: seanhess@gmail.com
+copyright: Orbital Labs
+license: BSD3
+github: orbital/datarobot
+
+dependencies:
+- base >=4.7 && <5
+- aeson
+- bytestring
+- exceptions
+- microlens
+- network-uri
+- safe
+- scientific
+- string-conversions
+- text
+- unordered-containers
+- vector
+- wreq
+
+library:
+  source-dirs: src
+
+tests:
+  test:
+    main: Spec.hs
+    source-dirs: test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - base
+    - datarobot
