@@ -9,7 +9,7 @@ module DataRobot.PredictResponse
   , predictionValue
   ) where
 import Control.Monad.Catch (Exception)
-import Data.Aeson (FromJSON(..), ToJSON, Value(..), decode, defaultOptions, genericToJSON, genericParseJSON, withObject, (.:), decodeStrict, eitherDecode)
+import Data.Aeson (FromJSON(..), ToJSON, Value(..), decode, defaultOptions, genericParseJSON, withObject, (.:), eitherDecode)
 import Data.Aeson.Types (Options(..))
 import Data.List (find)
 import Data.Maybe (fromMaybe)
@@ -21,7 +21,6 @@ import GHC.Generics (Generic)
 import Safe (headMay)
 
 import Lens.Micro ((^.))
-import DataRobot.Types (ModelID(..))
 import Network.Wreq (Response, responseBody, responseHeader)
 import Data.ByteString.Lazy (ByteString)
 
@@ -99,18 +98,19 @@ data PredictResult = PredictResult
 responseResult :: Float -> ResponseSuccess -> Either PredictError PredictResult
 responseResult time rs =
     fromMaybe (Left MissingPrediction) $ (Right <$> responseSuccess time rs)
+    where
+      responseSuccess :: Float -> ResponseSuccess -> Maybe PredictResult
+      responseSuccess t s = do
+          p <- headMay (_data s)
+          pure PredictResult
+              { prediction       = prediction (p :: Prediction)
+              , predictionTimeMs = t
+              , values           = predictionValues p
+              }
+
 
 responseFailure :: Text -> PredictError
 responseFailure e = APIError 422 e
-
-responseSuccess :: Float -> ResponseSuccess -> Maybe PredictResult
-responseSuccess t s = do
-    p <- headMay (_data s)
-    pure PredictResult
-        { prediction       = prediction (p :: Prediction)
-        , predictionTimeMs = t
-        , values           = predictionValues p
-        }
 
 -- Parse the entire prediction response
 -- This is needed because some of the data is delivered in the body and some is delivered via headers
