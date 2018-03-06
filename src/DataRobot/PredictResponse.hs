@@ -8,21 +8,16 @@ module DataRobot.PredictResponse
   , responseResult
   , parseResponse
   , predictionValue
-  ) where
-
-import Control.Applicative ((<|>))
+  ) where 
 import Control.Monad.Catch (Exception)
-import Data.Aeson (FromJSON(..), ToJSON, Value(..), withObject, (.:), encode, decode, decodeStrict, eitherDecode)
-import Data.Aeson.Types (Parser, parseMaybe, parseEither)
+import Data.Aeson (FromJSON(..), ToJSON, Value(..), withObject, (.:), decodeStrict, eitherDecode)
 import Data.List (find)
-import Data.Maybe (fromMaybe, maybe)
+import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import Data.Text (Text, pack)
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Safe (headMay)
-import Text.Read (readMaybe)
-import Debug.Trace
 
 import Lens.Micro ((^.))
 import DataRobot.Types (ModelID(..))
@@ -71,11 +66,11 @@ instance ToJSON PredictionValue
 instance FromJSON PredictionValue where
   parseJSON = withObject "prediction_value" $ \o ->
     do
-      value <- o .: "value"
-      label <- o .: "label"
-      case labelText label of
-        Just l  -> return $ PredictionValue l value
-        Nothing -> fail $ "Invalid label: " <> show label
+      value' <- o .: "value"
+      label' <- o .: "label"
+      case labelText label' of
+        Just l  -> return $ PredictionValue l value'
+        Nothing -> fail $ "Invalid label: " <> show label'
     where
       -- Always treat the label as text even though the JSON allows for numbers
       -- This makes label based lookup easier on the API consumer

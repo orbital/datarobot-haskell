@@ -8,11 +8,10 @@ module DataRobot.Predict
   , ModelID(..)
   ) where
 
-import Lens.Micro ((?~), (.~), (^?), (^.))
+import Lens.Micro ((?~), (.~))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Catch (MonadThrow)
-import Data.Aeson (Value(..), encode, decode)
-import Data.ByteString (ByteString)
+import Data.Aeson (Value(..), encode)
 import Data.Function ((&))
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Vector as V
@@ -26,7 +25,6 @@ import Network.URI (URI(..))
 import qualified Network.Wreq as Wreq
 import Network.Wreq (defaults, Auth, basicAuth, auth, header, checkResponse)
 import Network.Wreq.Types (ResponseChecker)
-import Debug.Trace
 
 
 -- https://app.datarobot.com/docs/users-guide/basics/predictions/prediction-api.html
