@@ -4,59 +4,89 @@
 module DataRobot.PredictResponse
   ( PredictError(..)
   , PredictResult(..)
+  , PredictionValue(..)
   , responseResult
-  , classProbability
+  , parseResponse
+  , predictionValue
   ) where
 
 import Control.Applicative ((<|>))
 import Control.Monad.Catch (Exception)
-import Data.Aeson (FromJSON(..), ToJSON, Value)
-import Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as HM
-import Data.Maybe (fromMaybe)
-import Data.Text (Text)
+import Data.Aeson (FromJSON(..), ToJSON, Value(..), withObject, (.:), encode, decode, decodeStrict, eitherDecode)
+import Data.Aeson.Types (Parser, parseMaybe, parseEither)
+import Data.List (find)
+import Data.Maybe (fromMaybe, maybe)
+import Data.Monoid ((<>))
+import Data.Text (Text, pack)
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Safe (headMay)
+import Text.Read (readMaybe)
+import Debug.Trace
+
+import Lens.Micro ((^.))
+import DataRobot.Types (ModelID(..))
+import Network.Wreq (Response, responseBody, responseHeader)
+import Data.ByteString.Lazy (ByteString)
 
 
 data PredictError
-    = APIError Code Text
+    = APIError Int Text
     | MissingPrediction
     deriving (Typeable, Show)
 
 instance Exception PredictError
 
 
-newtype PredictResponse = PredictResponse (Either PredictFailure PredictSuccess )
-    deriving (Show, Eq)
+data ResponseBody = ResponseBody
+  { _predictions :: [Prediction]
+  } deriving (Eq, Show, Generic)
 
-instance FromJSON PredictResponse where
-    parseJSON v = PredictResponse <$>
-      ((Right <$> parseJSON v) <|> (Left <$> parseJSON v))
+instance FromJSON ResponseBody where
+  parseJSON = withObject "response_body" $ \o -> do
+    d <- o .: "data"   -- predictions
+    pure $ ResponseBody { _predictions = d }
 
-type Code = Int
-
-data PredictFailure = PredictFailure
-  { code :: Code
-  , status :: Text
-  } deriving (Show, Eq, Generic)
-
-instance FromJSON PredictFailure
 
 data PredictSuccess = PredictSuccess
-  { predictions :: [Prediction]
+  { predictions    :: [Prediction]
+  , model_id       :: Text
   , execution_time :: Float
-  , model_id :: Text
-  -- , task :: Text
   } deriving (Show, Eq, Generic)
 
-instance FromJSON PredictSuccess
+data PredictFailure = PredictFailure
+  { message :: Text
+  } deriving (Show, Eq, Generic)
+
+type PredictResponse
+    = Either PredictFailure PredictSuccess
+
+
+data PredictionValue = PredictionValue
+  { label :: Text
+  , value :: Float
+  } deriving (Eq, Show, Generic)
+
+instance ToJSON PredictionValue
+instance FromJSON PredictionValue where
+  parseJSON = withObject "prediction_value" $ \o ->
+    do
+      value <- o .: "value"
+      label <- o .: "label"
+      case labelText label of
+        Just l  -> return $ PredictionValue l value
+        Nothing -> fail $ "Invalid label: " <> show label
+    where
+      -- Always treat the label as text even though the JSON allows for numbers
+      -- This makes label based lookup easier on the API consumer
+      labelText (Number n) = Just $ (pack . show) n
+      labelText (String s) = Just s
+      labelText _ = Nothing
 
 data Prediction = Prediction
-  { prediction :: Value
-  , class_probabilities :: Maybe (HashMap Text Float)
-  } deriving (Show, Eq, Generic)
+  { prediction       :: Value
+  , predictionValues :: Maybe [PredictionValue]
+  } deriving (Eq, Show, Generic)
 
 instance FromJSON Prediction
 
@@ -65,30 +95,47 @@ instance FromJSON Prediction
 -- | Result from the prediction
 
 data PredictResult = PredictResult
-  { prediction :: Value
+  { prediction       :: Value
   , predictionTimeMs :: Float
-  , modelId :: Text
-  , classProbabilities :: Maybe (HashMap Text Float)
+  , modelId          :: Text
+  , values           :: Maybe [PredictionValue]
   } deriving (Show, Eq, Generic)
 
-instance ToJSON PredictResult
 
 responseResult :: PredictResponse -> Either PredictError PredictResult
-responseResult (PredictResponse (Right ps)) =
+responseResult (Right ps) = do
       fromMaybe (Left MissingPrediction) $ do
         p <- headMay (predictions ps)
-        return $ Right $ PredictResult
-          { prediction = prediction (p :: Prediction)
+        pure $ Right $ PredictResult
+          { prediction       = prediction (p :: Prediction)
           , predictionTimeMs = execution_time ps
-          , modelId = model_id ps
-          , classProbabilities = class_probabilities p
+          , modelId          = model_id ps
+          , values           = predictionValues p
           }
-responseResult (PredictResponse (Left pf)) =
-    Left $ APIError (code pf) (status pf)
+responseResult (Left pf) = do
+    Left $ APIError 422 (message pf)
 
+-- Parse the entire prediction response
+-- This is needed because some of the data is delivered in the body and some is delivered via headers
+parseResponse :: ModelID -> Response ByteString -> PredictResponse
+parseResponse (ModelID mi) r =
+    let b  = r ^. responseBody
+        et = r ^. responseHeader "X-DataRobot-Execution-Time"
+    in
+      case eitherDecode b of
+        Left err ->
+          Left $ PredictFailure { message = pack err }
 
-classProbability :: Text -> PredictResult -> Maybe Float
-classProbability c r = do
-    cps <- classProbabilities r
-    HM.lookup c cps
+        Right body ->
+          Right $ PredictSuccess
+            { predictions    = _predictions body
+            , model_id       = mi
+            , execution_time = fromMaybe 0.0 (decodeStrict et)
+            }
+
+predictionValue :: Text -> PredictResult -> Maybe Float
+predictionValue c r = do
+    ps <- values r
+    pd <- find ((== c) . label) ps
+    pure $ value pd
 

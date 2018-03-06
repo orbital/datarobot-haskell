@@ -2,13 +2,13 @@ module DataRobot.API where
 
 import Lens.Micro ((^.))
 import Data.ByteString.Lazy (ByteString)
-import Data.Aeson (FromJSON, eitherDecode)
+import Data.Aeson (FromJSON, eitherDecode, decode)
 import Data.List (intercalate)
 import Data.Typeable (Typeable)
 import Data.Monoid ((<>))
 import Control.Monad.Catch (MonadThrow, Exception, throwM)
 import Network.URI (URI(..), pathSegments, uriToString)
-import Network.Wreq (Response, responseBody)
+import Network.Wreq (Response, responseBody, headers)
 
 data JSONError = JSONError String ByteString
                deriving (Typeable, Show)
@@ -20,7 +20,6 @@ parseResponse r =
   case eitherDecode $ r ^. responseBody of
     Left err -> throwM $ JSONError err (r ^. responseBody)
     Right p -> pure p
-
 
 endpoint :: URI -> [String] -> String
 endpoint base ps =

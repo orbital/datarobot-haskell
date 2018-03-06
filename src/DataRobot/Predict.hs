@@ -8,23 +8,25 @@ module DataRobot.Predict
   , ModelID(..)
   ) where
 
-import Lens.Micro ((?~), (.~))
+import Lens.Micro ((?~), (.~), (^?), (^.))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Catch (MonadThrow)
-import Data.Aeson (Value(..))
+import Data.Aeson (Value(..), encode, decode)
+import Data.ByteString (ByteString)
 import Data.Function ((&))
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Vector as V
 import Data.String.Conversions (cs)
 
 import DataRobot.Types
-import DataRobot.API (parseResponse, endpoint)
+import DataRobot.API (endpoint)
 import DataRobot.PredictResponse
 
 import Network.URI (URI(..))
 import qualified Network.Wreq as Wreq
 import Network.Wreq (defaults, Auth, basicAuth, auth, header, checkResponse)
 import Network.Wreq.Types (ResponseChecker)
+import Debug.Trace
 
 
 -- https://app.datarobot.com/docs/users-guide/basics/predictions/prediction-api.html
@@ -34,7 +36,7 @@ predict c pid mid o = do
       url = predictURI (baseURLPredict c) pid mid
       body = Array $ V.singleton $ Object $ HM.fromList o
   r <- liftIO $ Wreq.postWith opts url body
-  pr <- parseResponse r
+  let pr = parseResponse mid r
   pure $ responseResult pr
 
 

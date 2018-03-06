@@ -17,7 +17,7 @@ module DataRobot
   , PredictError(..)
   , PredictResult(..)
   , responseResult
-  , classProbability
+  , predictionValue
 
 
 
