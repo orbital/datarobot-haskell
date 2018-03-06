@@ -34,8 +34,7 @@ predict c pid mid o = do
       url = predictURI (baseURLPredict c) pid mid
       body = Array $ V.singleton $ Object $ HM.fromList o
   r <- liftIO $ Wreq.postWith opts url body
-  let pr = parseResponse mid r
-  pure $ responseResult pr
+  pure $ parseResponse r
 
 
 httpOptions :: Credentials -> Wreq.Options

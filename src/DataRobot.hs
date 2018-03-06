@@ -16,7 +16,6 @@ module DataRobot
   , Fields
   , PredictError(..)
   , PredictResult(..)
-  , responseResult
   , predictionValue
 
 
