@@ -10,11 +10,10 @@ module DataRobot.PredictResponse
   ) where
 import Control.Monad.Catch (Exception)
 import Data.Aeson (FromJSON(..), ToJSON, Value(..), decode, defaultOptions, genericParseJSON, withObject, (.:), eitherDecode)
-import Data.Aeson.Types (Options(..))
+import Data.Aeson.Types (Options(..), typeMismatch)
 import Data.List (find)
 import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>))
-import Data.Text (Text, pack)
+import Data.Text (Text)
 import Data.String.Conversions (cs)
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
@@ -29,9 +28,10 @@ underscorePrefixOptions :: Options
 underscorePrefixOptions =
   defaultOptions { fieldLabelModifier = dropWhile (== '_') }
 
+type Code = Int
 
 data PredictError
-    = APIError Int Text
+    = APIError Code Text
     | MissingPrediction
     deriving (Typeable, Show)
 
@@ -64,19 +64,17 @@ data PredictionValue = PredictionValue
 
 instance ToJSON PredictionValue
 instance FromJSON PredictionValue where
-  parseJSON = withObject "prediction_value" $ \o ->
-    do
+  parseJSON = withObject "prediction_value" $ \o -> do
       value' <- o .: "value"
-      label' <- o .: "label"
-      case labelText label' of
-        Just l  -> return $ PredictionValue l value'
-        Nothing -> fail $ "Invalid label: " <> show label'
+      label' <- labelText =<< o .: "label"
+      return $ PredictionValue label' value'
     where
-      -- Always treat the label as text even though the JSON allows for numbers
-      -- This makes label based lookup easier on the API consumer
-      labelText (Number n) = Just $ (pack . show) n
-      labelText (String s) = Just s
-      labelText _ = Nothing
+      -- Always treat the label as text even though the JSON also allows numbers
+      -- This makes key-based lookup easier on the API consumer
+      labelText (Number n) = pure $ (cs .show) n
+      labelText (String s) = pure s
+      labelText invalid    = typeMismatch "label" invalid
+
 
 -- Combination of prediction values and prediction label
 data Prediction = Prediction
