@@ -128,8 +128,8 @@ parseResponse r = do
       tm :: Float
       tm = fromMaybe 0.0 $ decode (cs et)
 
-      successResponse :: [Prediction] -> Either PredictError PredictResult
-      successResponse preds = responseResult tm $ ResponseSuccess { _data = preds }
+      successResponse :: ResponseSuccess -> Either PredictError PredictResult
+      successResponse (ResponseSuccess preds) = responseResult tm $ ResponseSuccess { _data = preds }
 
 predictionValue :: Text -> PredictResult -> Maybe Float
 predictionValue c r = do
