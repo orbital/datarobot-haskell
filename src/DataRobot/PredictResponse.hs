@@ -12,7 +12,7 @@ import Control.Monad.Catch (Exception)
 import Data.Aeson (FromJSON(..), ToJSON, Value(..), decode, defaultOptions, genericParseJSON, withObject, (.:), eitherDecode)
 import Data.Aeson.Types (Options(..), typeMismatch)
 import Data.List (find)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, maybe)
 import Data.Text (Text)
 import Data.String.Conversions (cs)
 import Data.Typeable (Typeable)
@@ -78,60 +78,54 @@ instance FromJSON PredictionValue where
 
 -- Combination of prediction values and prediction label
 data Prediction = Prediction
-  { prediction       :: Value  -- label or float
-  , predictionValues :: Maybe [PredictionValue]
+  { _prediction       :: Value  -- label or float
+  , _predictionValues :: Maybe [PredictionValue]
   } deriving (Eq, Show, Generic)
 
-instance FromJSON Prediction
+instance FromJSON Prediction where
+  parseJSON = genericParseJSON underscorePrefixOptions
+
 
 
 -- | Result from the prediction
 data PredictResult = PredictResult
   { prediction       :: Value
   , predictionTimeMs :: Float
-  , values           :: Maybe [PredictionValue]
+  , predictionValues :: Maybe [PredictionValue]
   } deriving (Show, Eq, Generic)
 
 
-responseResult :: Float -> ResponseSuccess -> Either PredictError PredictResult
-responseResult time rs =
-    fromMaybe (Left MissingPrediction) $ (Right <$> responseSuccess time rs)
-    where
-      responseSuccess :: Float -> ResponseSuccess -> Maybe PredictResult
-      responseSuccess t s = do
-          p <- headMay (_data s)
-          pure PredictResult
-              { prediction       = prediction (p :: Prediction)
-              , predictionTimeMs = t
-              , values           = predictionValues p
-              }
+-- Create a result for a successful response
+responseSuccess :: Float -> ResponseSuccess -> Either PredictError PredictResult
+responseSuccess et rs =
+    maybe (Left MissingPrediction) Right createResult
+  where
+    createResult = do
+        p <- headMay (_data rs)
+        pure PredictResult
+            { prediction       = _prediction p
+            , predictionValues = _predictionValues p
+            , predictionTimeMs = et
+            }
 
-
-responseFailure :: Text -> PredictError
-responseFailure e = APIError 422 e
+-- Create a result for a failed response
+responseFailure :: Text -> Either PredictError PredictResult
+responseFailure e = Left $ APIError 422 e
 
 -- Parse the entire prediction response
 -- This is needed because some of the data is delivered in the body and some is delivered via headers
 parseResponse :: Response ByteString -> Either PredictError PredictResult
 parseResponse r = do
-    case eitherDecode b of
-        Left err ->
-            Left $ responseFailure (cs err)
-        Right predictions ->
-            successResponse predictions
+    either (responseFailure . cs) (responseSuccess tm) $ eitherDecode b
     where
       b  = r ^. responseBody
       et = r ^. responseHeader "X-DataRobot-Execution-Time"
-
-      tm :: Float
       tm = fromMaybe 0.0 $ decode (cs et)
 
-      successResponse :: ResponseSuccess -> Either PredictError PredictResult
-      successResponse (ResponseSuccess preds) = responseResult tm $ ResponseSuccess { _data = preds }
-
+-- Find a prediction value probability from a given label
 predictionValue :: Text -> PredictResult -> Maybe Float
 predictionValue c r = do
-    ps <- values r
+    ps <- predictionValues r
     pd <- find ((== c) . label) ps
     pure $ value pd
 

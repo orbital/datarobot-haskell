@@ -21,6 +21,7 @@ parseResponse r =
     Left err -> throwM $ JSONError err (r ^. responseBody)
     Right p -> pure p
 
+
 endpoint :: URI -> [String] -> String
 endpoint base ps =
     let ps' = "" : pathSegments base <> ps
