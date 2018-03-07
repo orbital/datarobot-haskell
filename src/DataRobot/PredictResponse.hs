@@ -98,9 +98,7 @@ data PredictResult = PredictResult
 -- Create a result for a successful response
 responseSuccess :: Float -> ResponseSuccess -> Either PredictError PredictResult
 responseSuccess et rs =
-    maybe (Left MissingPrediction) Right createResult
-  where
-    createResult = do
+    maybe (Left MissingPrediction) Right $ do
         p <- headMay (_data rs)
         pure PredictResult
             { prediction       = _prediction p
