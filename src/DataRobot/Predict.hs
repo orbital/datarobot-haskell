@@ -11,14 +11,14 @@ module DataRobot.Predict
 import Lens.Micro ((?~), (.~))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Catch (MonadThrow)
-import Data.Aeson (Value(..))
+import Data.Aeson (Value(..), encode)
 import Data.Function ((&))
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Vector as V
 import Data.String.Conversions (cs)
 
 import DataRobot.Types
-import DataRobot.API (parseResponse, endpoint)
+import DataRobot.API (endpoint)
 import DataRobot.PredictResponse
 
 import Network.URI (URI(..))
@@ -34,8 +34,7 @@ predict c pid mid o = do
       url = predictURI (baseURLPredict c) pid mid
       body = Array $ V.singleton $ Object $ HM.fromList o
   r <- liftIO $ Wreq.postWith opts url body
-  pr <- parseResponse r
-  pure $ responseResult pr
+  pure $ parseResponse r
 
 
 httpOptions :: Credentials -> Wreq.Options
