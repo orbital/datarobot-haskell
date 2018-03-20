@@ -34,9 +34,10 @@ type Code = Int
 data PredictError
     = APIError Code Text
     | MissingPrediction
-    deriving (Typeable, Show)
+    deriving (Typeable, Show, Generic)
 
 instance Exception PredictError
+instance ToJSON PredictError
 
 
 -- Datarobot successful response
@@ -91,6 +92,7 @@ data Prediction = Prediction
   , _predictionValues :: Maybe [PredictionValue]
   } deriving (Eq, Show, Generic)
 
+instance ToJSON Prediction
 instance FromJSON Prediction where
   parseJSON = genericParseJSON underscorePrefixOptions
 
@@ -102,6 +104,8 @@ data PredictResult = PredictResult
   , predictionTimeMs :: Float
   , predictionValues :: Maybe [PredictionValue]
   } deriving (Show, Eq, Generic)
+
+instance ToJSON PredictResult
 
 
 -- Create a result for a data robot response
