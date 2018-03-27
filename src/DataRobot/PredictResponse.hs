@@ -8,6 +8,7 @@ module DataRobot.PredictResponse
   , parseResponse
   , predictionValue
   ) where
+import Control.Applicative ((<|>))
 import Control.Monad.Catch (Exception)
 import Data.Aeson (FromJSON(..), ToJSON, Value(..), decode, defaultOptions, genericParseJSON, withObject, (.:), eitherDecode)
 import Data.Aeson.Types (Options(..), typeMismatch)
@@ -33,9 +34,10 @@ type Code = Int
 data PredictError
     = APIError Code Text
     | MissingPrediction
-    deriving (Typeable, Show)
+    deriving (Typeable, Show, Generic)
 
 instance Exception PredictError
+instance ToJSON PredictError
 
 
 -- Datarobot successful response
@@ -55,6 +57,14 @@ data ResponseFailure = ResponseFailure
 instance FromJSON ResponseFailure where
   parseJSON = genericParseJSON underscorePrefixOptions
 
+-- Datarobot response
+data ResponseData
+  = ResponseData (Either ResponseFailure ResponseSuccess)
+  deriving (Eq, Show)
+
+instance FromJSON ResponseData where
+  parseJSON v = ResponseData <$>
+    ((Right <$> parseJSON v) <|> (Left <$> parseJSON v))
 
 -- A single prediction value
 data PredictionValue = PredictionValue
@@ -82,6 +92,7 @@ data Prediction = Prediction
   , _predictionValues :: Maybe [PredictionValue]
   } deriving (Eq, Show, Generic)
 
+instance ToJSON Prediction
 instance FromJSON Prediction where
   parseJSON = genericParseJSON underscorePrefixOptions
 
@@ -94,10 +105,12 @@ data PredictResult = PredictResult
   , predictionValues :: Maybe [PredictionValue]
   } deriving (Show, Eq, Generic)
 
+instance ToJSON PredictResult
 
--- Create a result for a successful response
-responseSuccess :: Float -> ResponseSuccess -> Either PredictError PredictResult
-responseSuccess et rs =
+
+-- Create a result for a data robot response
+handleResponse :: Float -> ResponseData -> Either PredictError PredictResult
+handleResponse et (ResponseData (Right rs)) =
     maybe (Left MissingPrediction) Right $ do
         p <- headMay (_data rs)
         pure PredictResult
@@ -105,6 +118,8 @@ responseSuccess et rs =
             , predictionValues = _predictionValues p
             , predictionTimeMs = et
             }
+handleResponse _ (ResponseData (Left err)) =
+    responseFailure $ _message err
 
 -- Create a result for a failed response
 responseFailure :: Text -> Either PredictError PredictResult
@@ -114,7 +129,7 @@ responseFailure e = Left $ APIError 422 e
 -- This is needed because some of the data is delivered in the body and some is delivered via headers
 parseResponse :: Response ByteString -> Either PredictError PredictResult
 parseResponse r = do
-    either (responseFailure . cs) (responseSuccess tm) $ eitherDecode b
+    either (responseFailure . cs) (handleResponse tm) $ eitherDecode b
     where
       b  = r ^. responseBody
       et = r ^. responseHeader "X-DataRobot-Execution-Time"

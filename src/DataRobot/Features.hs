@@ -32,7 +32,7 @@ features c pid mid = do
 
 featuresEndpoint :: URI -> ProjectID -> ModelID -> String
 featuresEndpoint base (ProjectID pid) (ModelID mid) =
-    endpoint base ["projects", cs pid, "models", cs mid, "features"]
+    endpoint base ["projects", cs pid, "models", cs mid, "features/"]
 
 
 
