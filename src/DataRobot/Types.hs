@@ -11,7 +11,7 @@ import Network.URI (URI(..))
 
 data Credentials = Credentials
     { apiToken :: ByteString
-    , apiKey :: ByteString
+    , apiKey   :: ByteString
     , username :: ByteString
     , baseURLPredict :: URI
     , baseURL :: URI
@@ -25,17 +25,27 @@ newtype ProjectID = ProjectID Text
 newtype ModelID = ModelID Text
   deriving (Show, Eq, Generic, ToJSON, FromJSON)
 
-
 newtype DeploymentID = DeploymentID Text
   deriving (Show, Eq, Generic, ToJSON, FromJSON)
 
 data ModelIdentifier = 
-    ProjectBase ProjectID ModelID 
-    | DeploymentBase DeploymentID 
+  ProjectBase ProjectID ModelID 
+    | DeploymentBase DeploymentID ProjectID ModelID
     deriving (Show, Eq, Generic)
 instance ToJSON ModelIdentifier
 instance FromJSON ModelIdentifier
 
+projectID :: ModelIdentifier -> ProjectID
+projectID (ProjectBase pid _) = pid 
+projectID (DeploymentBase _ pid _) = pid 
+
+modelID :: ModelIdentifier -> ModelID
+modelID (ProjectBase _ mid) = mid 
+modelID (DeploymentBase _ _ mid) = mid 
+
+deploymentID :: ModelIdentifier -> Maybe DeploymentID
+deploymentID (ProjectBase _ _) = Nothing 
+deploymentID (DeploymentBase did _ _) = Just did  
 
 newtype Features = Features
     { featureNames :: [Text]

@@ -2,11 +2,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module DataRobot.Predict
   ( predict
-  --, predictByProjectID
   , predictURI
   , Credentials(..)
   , ProjectID(..)
   , ModelID(..)
+  , DeploymentID (..)
+  , ModelIdentifier(..)
   ) where
 
 import Lens.Micro ((?~), (.~))
@@ -51,7 +52,7 @@ httpOptions c =
 predictURI :: URI -> ModelIdentifier -> String
 predictURI base (ProjectBase (ProjectID pid) (ModelID mid)) =
     endpoint base [cs pid, cs mid, "predict"]
-predictURI base (DeploymentBase (DeploymentID did))= 
+predictURI base (DeploymentBase (DeploymentID did) _ _)= 
     endpoint base ["deployments",cs did, "predictions"]
 
 authorization :: Credentials -> Auth
