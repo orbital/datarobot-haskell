@@ -48,4 +48,4 @@ httpOptions c =
     ignoreStatus _ _ = pure ()
 
     authorization :: ByteString
-    authorization = "Token " <> (apiToken c)
+    authorization = "Token " <> apiToken c

@@ -19,14 +19,25 @@ data Credentials = Credentials
 
 
 newtype ProjectID = ProjectID Text
-  deriving (Show, Eq, ToJSON, FromJSON)
+  deriving (Show, Eq, Generic, ToJSON, FromJSON)
 
 
 newtype ModelID = ModelID Text
-  deriving (Show, Eq, ToJSON, FromJSON)
+  deriving (Show, Eq, Generic, ToJSON, FromJSON)
 
 
-data Features = Features
+newtype DeploymentID = DeploymentID Text
+  deriving (Show, Eq, Generic, ToJSON, FromJSON)
+
+data ModelIdentifier = 
+    ProjectBase ProjectID ModelID 
+    | DeploymentBase DeploymentID 
+    deriving (Show, Eq, Generic)
+instance ToJSON ModelIdentifier
+instance FromJSON ModelIdentifier
+
+
+newtype Features = Features
     { featureNames :: [Text]
     } deriving (Show, Eq, Generic)
 instance ToJSON Features
