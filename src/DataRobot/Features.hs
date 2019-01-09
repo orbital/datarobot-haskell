@@ -21,17 +21,19 @@ import Network.Wreq.Types (ResponseChecker)
 
 
 -- GET https://app.datarobot.com/api/v2/projects/5988c39bc808917519a2acbb/models/5988d164c8089128924bd6cf/features
-features :: (MonadIO m, MonadThrow m) => Credentials -> ProjectID -> ModelID -> m Features
-features c pid mid = do
+features :: (MonadIO m, MonadThrow m) => Credentials -> ModelIdentifier -> m Features
+features c mid = do
     let opts = httpOptions c
-        url = featuresEndpoint (baseURL c) pid mid
+        url = featuresEndpoint (baseURL c) mid
     r <- liftIO $ Wreq.getWith opts url
     f <- parseResponse r
     pure f
 
 
-featuresEndpoint :: URI -> ProjectID -> ModelID -> String
-featuresEndpoint base (ProjectID pid) (ModelID mid) =
+featuresEndpoint :: URI -> ModelIdentifier -> String
+featuresEndpoint base mident = do 
+    let (ProjectID pid) = projectID mident
+        (ModelID mid) = modelID mident
     endpoint base ["projects", cs pid, "models", cs mid, "features/"]
 
 
