@@ -28,8 +28,8 @@ newtype ModelID = ModelID Text
 newtype DeploymentID = DeploymentID Text
   deriving (Show, Eq, Generic, ToJSON, FromJSON)
 
-data ModelIdentifier = 
-  ProjectBase ProjectID ModelID 
+data ModelIdentifier 
+  = ProjectBase ProjectID ModelID 
     | DeploymentBase DeploymentID ProjectID ModelID
     deriving (Show, Eq, Generic)
 instance ToJSON ModelIdentifier
