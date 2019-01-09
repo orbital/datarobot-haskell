@@ -6,6 +6,11 @@ module DataRobot
   , defaultBaseURLPredict
   , ProjectID(..)
   , ModelID(..)
+  , DeploymentID (..)
+  , ModelIdentifier(..)
+  , projectID
+  , modelID
+  , deploymentID
 
   -- * Features API
   , features

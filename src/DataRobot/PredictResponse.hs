@@ -128,7 +128,7 @@ responseFailure e = Left $ APIError 422 e
 -- Parse the entire prediction response
 -- This is needed because some of the data is delivered in the body and some is delivered via headers
 parseResponse :: Response ByteString -> Either PredictError PredictResult
-parseResponse r = do
+parseResponse r =
     either (responseFailure . cs) (handleResponse tm) $ eitherDecode b
     where
       b  = r ^. responseBody
